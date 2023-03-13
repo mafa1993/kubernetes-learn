@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels: # pod的label
+        app: anti-nginx
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: a
+                    operator: In
+                    values:
+                      - b 
+              topologyKey: kubernetes.io/hostname
+        podAntiAffinity: # 反亲和性
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app  # 如果node上的pod有label为app=anti-nginx就不再去上面调度，实现一个节点只有一个nginx的pod
+                    operator: In
+                    values:
+                      - anti-nginx
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: nginx
+          image: nginx

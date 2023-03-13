@@ -1,0 +1,24 @@
+# 容忍度
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels: # pod的label
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+      tolerations:
+        - key: "for-special-user"  # 可以容忍for-special-user=cadmin:NoSchedule的污点
+          operator: "Equal"
+          value: "cadmin"
+          effect: "NoSchedule"
+          tolerationSeconds: 300 # 容忍多少秒，超过这个秒数，进行驱逐

@@ -1,0 +1,21 @@
+# 调度优先级
+apiVersion: apps/v1
+kind: PriorityClass
+metadata:
+  name: high
+value: 10000
+globalDefault: false
+description: "xxx"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: myapp
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  priorityClassName: high  # 使用priority class

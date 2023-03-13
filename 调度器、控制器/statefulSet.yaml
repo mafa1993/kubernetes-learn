@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nginx-ss
+spec:
+  selector:
+    matchLabels:
+      app: nginx-ss
+  serviceName: nginx-svc  # statefulset和服务绑定，用于将服务暴露，便于访问
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nginx-ss
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-svc
+spec:
+  ports:
+  - port: 80
+  clusterIP: None
+  selector:
+    app: nginx-ss
+
