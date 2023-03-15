@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: task-pv-claim
+  containers:
+  - name: myapp
+    image: nginx
+    volumeMounts:
+      - mountPath: "/usr/share/nginx/html"
+        name: task-pv-claim 
+---
+# pvc
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-pv-claim
+spec:
+  storageClassName: manual # 想要申请的类型
+  resources:
+    requests:
+      storage: 100Mi  # 需要的大小
+  accessModes:  # 需要的操作类型
+    - ReadWriteOnce
+---
+# pv
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+  labels: 
+    type: local
+spec:
+  capacity:
+    storage: 100Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: manual
+  hostPath:  # 本地的，也可以是nfs
+    path: "/var/data"
