@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+spec:
+  publishNotReadyAddresses: true  # 默认false，如果开启，不ready的pod也会接入流量，在endpoints里可以查看到
+  selector:
+    app: myapp  # 用来选择后端的pod，利用label选择
+  ports:
+  - port: 80  # 外部访问的端口
+    targetPort: 80  # 访问pod的端口
