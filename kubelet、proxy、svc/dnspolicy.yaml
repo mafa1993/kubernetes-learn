@@ -1,0 +1,12 @@
+# 自定义dnspolicy
+spec: # pod中的spec中定义
+  dnsPolicy: "None"
+  dnsConfig:  # 配置resolve.conf 中的内容
+    nameserver:
+      - 1.2.3.4
+    searchs:
+      - xx.xx
+      - xx 
+    options: 
+      - name: ndots
+        values: 2
