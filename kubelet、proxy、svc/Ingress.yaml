@@ -7,11 +7,11 @@ metadata:
   annotations: 
     kubernetes.io/ingress.class: "nginx" # 指定ingress需要被那个Controller处理，这里是nginx的Controller
 spec:
-  tls: 
+  tls: # 
     - hosts: 
         - xxx.com
       secretName: ingress-tls
-  rules:
+  rules:  # 转发规则
   - host: xxx.com
     http:
       paths:
