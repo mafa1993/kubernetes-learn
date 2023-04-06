@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prometheus
+  annotations:
+    prometheus.io/port: http-metrics # 这里用port名或者端口号都可以
+    prometheus.io/scape: "true" #设置成true，代表进行采集
+spec:
+  containers:
+    - name: prometheustest
+      image: nginx
+      ports:
+        - containerPort: 3000
+          name: http-metrics
+          protocol: TCP

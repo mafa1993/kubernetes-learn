@@ -1,0 +1,57 @@
+
+groups:
+- name: Node-Alert
+  rules:
+  - alert: Instance-Down 
+    expr: up == 0
+    for: 1m 
+    labels:
+      severity: warning
+    annotations: 
+      summary: "Instance {{$labels.instance}} down"
+      description: "{{$labels.instance}}: job {{$labels.job}} has been down for more than 1 minutes."
+
+  - alert: "内存使用率过高"
+    expr: round(100- node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes*100) > 80
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{ $labels.instance }}内存使用率过高"
+      description: "{{ $labels.instance }}当前使用率{{ $value }}%"
+
+  - alert: "CPU使用率过高"
+    expr: round(100 - ((avg by (instance,job)(irate(node_cpu_seconds_total{mode="idle",instance!~'bac-.*'}[5m]))) *100)) > 85
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{ $labels.instance }}CPU使用率过高"
+      description: "{{ $labels.instance }}当前使用率{{ $value }}%"
+
+  - alert: "磁盘使用率过高"
+    expr: round(100-100*(node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"})) > 80
+    for: 15s
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{ $labels.instance }}磁盘使用率过高"
+      description: "{{ $labels.instance }}当前磁盘{{$labels.mountpoint}} 使用率{{ $value }}%"
+
+  - alert: "分区容量过低"
+    expr: round(node_filesystem_avail_bytes{fstype=~"ext4|xfs",instance!~"testnode",mountpoint!~"/boot.*"}/1024/1024/1024) < 10
+    for: 15s
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{ $labels.instance }}分区容量过低"
+      description: "{{ $labels.instance }}当前分区为“{{$labels.mountpoint}} ” 剩余容量{{ $value }}GB"
+
+  - alert: "网络流出速率过高"
+    expr: round(irate(node_network_receive_bytes_total{instance!~"data.*",device!~'tap.*|veth.*|br.*|docker.*|vir.*|lo.*|vnet.*'}[1m])/1024) > 2048
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "{{ $labels.instance }}网络流出速率过高"
+      description: "{{ $labels.instance }}当前速率{{ $value }}KB/s"
