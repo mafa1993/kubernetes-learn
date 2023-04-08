@@ -17,8 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -53,19 +51,14 @@ func (r *MyKind) Default() {
 var _ webhook.Validator = &MyKind{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-// 创建时数据验证
 func (r *MyKind) ValidateCreate() error {
 	mykindlog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
-	if r.Spec.Foo == "" {
-		return  fmt.Errorf("foo 不能为空")
-	}
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-// 更新时数据验证
 func (r *MyKind) ValidateUpdate(old runtime.Object) error {
 	mykindlog.Info("validate update", "name", r.Name)
 
