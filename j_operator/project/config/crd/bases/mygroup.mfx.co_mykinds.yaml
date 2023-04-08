@@ -5,10 +5,10 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.1
   creationTimestamp: null
-  name: mykinds.mygroup.mfx.co   # kind名.group名.domain
+  name: mykinds.mygroup.mfx.co
 spec:
   group: mygroup.mfx.co
-  names:  # api\v1beta1\mykind_types.go 里面可以通过tags来修改这里生成的内容
+  names:
     kind: MyKind
     listKind: MyKindList
     plural: mykinds
@@ -17,7 +17,7 @@ spec:
   versions:
   - name: v1beta1
     schema:
-      openAPIV3Schema:  # openapi 一个声明式api的标准
+      openAPIV3Schema:
         description: MyKind is the Schema for the mykinds API
         properties:
           apiVersion:
