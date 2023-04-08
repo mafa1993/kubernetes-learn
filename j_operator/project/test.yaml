@@ -1,0 +1,7 @@
+apiVersion: mygroup.mfx.co
+kind: MyKind
+metadata:
+  name: test-crd
+spec: 
+  foo: nginx 
+ 

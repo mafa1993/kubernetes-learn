@@ -85,6 +85,7 @@ func (r *MyKindReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 							Name:  "container",
 						},
 					},
+					NodeName: item.Name,
 				},
 			}
 
