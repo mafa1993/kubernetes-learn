@@ -18,6 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+
+	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -46,17 +50,62 @@ type MyKindReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
+// 消费者，主要代码逻辑写在这
 func (r *MyKindReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
+	myKind := mygroupv1beta1.MyKind{}                     // 自己定义的对象的kind
+	err := r.Client.Get(ctx, req.NamespacedName, &myKind) //  r里面存储了对象的信息，这里用get获取对应key的内容，放到mykind中，NamespaceName是ns加上名称
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	nodeList := v1.NodeList{}
+
+	if myKind.Spec.Foo != "" {
+		err = r.Client.List(ctx, &nodeList) // 获取nodeList
+		if err != nil {
+			fmt.Println(err)
+		}
+		// 遍历每个node，给每个node添加一个pod
+		for _, item := range nodeList.Items {
+			p := v1.Pod{
+				TypeMeta: v12.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Pod",
+				},
+				ObjectMeta: v12.ObjectMeta{
+					GenerateName: item.Name,
+					Namespace:    myKind.Namespace,
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: myKind.Spec.Foo,
+							Name:  "container",
+						},
+					},
+				},
+			}
+
+			err = r.Client.Create(ctx, &p)
+			if err != nil {
+				fmt.Println("create err", err)
+			}
+
+		}
+
+	}
 	// TODO(user): your logic here
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
+// 生产者，相当于informer
 func (r *MyKindReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mygroupv1beta1.MyKind{}).
+		For(&mygroupv1beta1.MyKind{}). // 箭筒mygroupv1beta1.Mykind对象的变化，最后交给Reconcile
+		// 主处理逻辑
 		Complete(r)
 }
