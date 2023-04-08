@@ -75,7 +75,7 @@ func (r *MyKindReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 					Kind:       "Pod",
 				},
 				ObjectMeta: v12.ObjectMeta{
-					GenerateName: item.Name,
+					GenerateName: item.Name, // 命名前缀，如果没指定name，k8s会用generatename 加上一个随机数
 					Namespace:    myKind.Namespace,
 				},
 				Spec: v1.PodSpec{
