@@ -1,0 +1,25 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp
+spec:
+  scaleTargetRef:  # 扩展的目标
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+  minReplicas: 1  # 最小数量
+  maxReplicas: 3  # 最大数量
+  metrics:
+  - type: Resource  # resource 为k8s默认支持的类型，cpu和mem
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Pods
+    pods: 
+      metric: 
+        name: qps
+      target: 
+        type: AverageValue
+        AverageValue: 1k   # 只支持averageValue的指标值
