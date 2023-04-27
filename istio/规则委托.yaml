@@ -1,0 +1,31 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: test
+spec:
+  hosts:
+    - "ns.com"
+  gateways:
+    - mygateway
+  http:
+    - match:  #也可以设置7层代理，使用rewrite等
+      - uri:
+          prefix: "/nsA"
+      delegate:
+        name: productpage
+        namespace: nsA
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: productpage
+spec:
+  http:
+    - match:  
+      - uri:
+          prefix: "/nsA/v1"
+      route:
+        - destination: 
+          host: "productpage-v1.nsA.svc.cluster.local"
+        - destination:
+          host: "productpage.nsA.svc.cluster.local"
