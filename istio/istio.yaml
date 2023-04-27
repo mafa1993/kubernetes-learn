@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService  # envoy中的route
+metadata:
+  name: simple
+spec:
+  gateways:  # 会选择一个gateway
+    - simple
+  hosts:
+    - simple.io  # 访问的域名
+  http:
+    - match:
+        - port: 80  # 访问的端口
+      route:
+        - destination:
+            host: simple.simple.svc.cluster.local  # 实际转发的后端svc
+            port:
+              number: 80
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway  # 对应的为listener
+metadata:
+  name: simple
+spec:
+  selector:
+    istio: ingressgateway # 在打这个标签的pod上，建立一个listener
+  servers:
+    - hosts:
+        - simple.io
+      port:
+        name: http-simple
+        number: 80
+        protocol: HTTP
