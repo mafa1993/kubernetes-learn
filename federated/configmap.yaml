@@ -1,0 +1,17 @@
+apiVersion: core.kubefed.io/v1beta1
+kind: FederatedTypeConfig
+metadata:
+    name: configmaps
+spec:
+    federatedType:
+        group: types.kubefed.io
+        kind: FederatedConfigMap
+        pluraName: federatedconfigmaps
+        scope: Namespaced
+        version: v1beta1
+    propagation: Enabled
+    targetType:
+        kind: ConfigMap
+        pluraName: configmaps
+        scope: Namespaced
+        version: v1
