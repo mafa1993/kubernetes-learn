@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: foo
+spec:
+  gateways:
+    - foo
+  hosts:
+    - foo.com
+  http:
+    - match:
+        - port: 80
+          route:
+            - destination:
+              host: foo.com
+              port:
+                number: 80
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: foo
+spec:
+  selector:
+    istio: ingressgateway
+  services:
+    - hosts:
+        - foo.com
+      port:
+        name: http-default
+        number: 80
+        protocol: HTTP

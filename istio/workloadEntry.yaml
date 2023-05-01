@@ -1,0 +1,27 @@
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+    name: foo
+spec:
+    address: foo.bar.svc.cluster2
+    labels:
+        run: foo
+    locality: region1/zone1  # 永安里定义cluster2 所在的region和az
+---
+# serviceEntry 将pod和workload Entry发布出去
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata: 
+    name: foo
+spec: 
+    hosts:
+        - foo.com
+    ports:
+        - name: http-defaule
+          number: 80
+          protocol: HTTP
+          targetPort: 80
+    resolution: STATIC
+    workloadSelector: # 会同时选择有这个标签的workloadEntry和pod
+        labels:
+            run: foo 

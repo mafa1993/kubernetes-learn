@@ -1,0 +1,42 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: foo
+spec:
+  host: foo.com
+  trafficPolicy: 
+    loadBalancer:
+      localityLbSetting: 
+        distribute:
+        - from: "*/*"
+          to: 
+            region1/zone1/*: 99  # 99的流量在cluster1
+            region2/zone2/*: 1   # 1的流量去cluster2
+          enabled: true
+        outlierDetection:
+          baseEjectionTime: 10s
+          consecutive5xxErrors: 100
+          interval: 10s
+  tls:
+    mode: ISTION_MUTUAL
+---
+# 出错流量的转发
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: foo
+spec:
+  host: foo.com
+  trafficPolicy: 
+    loadBalancer: 
+      locailityLbSetting: 
+        enabled: true
+        failover:  
+        - from: region1/zone1  # region1 zone1的出错流量到region2、zone2
+          to: region2/zone2 
+      outlierDetection:
+        baseEjectionTime: 10s
+        consecutive5xxErrors: 100
+        interval: 10s
+  tls:
+    mode: ISTION_MUTUAL
