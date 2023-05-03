@@ -1,0 +1,92 @@
+# container security context
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp
+  labels:
+    name: myapp
+spec:
+  securityContext:  # pod level 
+    fsGroup: 123
+    supplementalGroups:
+      - 3
+    seLinuxOptions: # 一般不使用
+      level: "ss:xx,xx"
+  containers:
+  - name: myapp
+    image: <Image>
+    securityContext:  # container level
+      privileged: true  # 特权启动，以root启动可以理解为
+      capabilities:  # 获取某些权限，privileged true 一般代表获取所有权限
+        drop:
+          - ALL  # 去除所有特权
+      runAsGroup: 1337  # 以1337属组运行容器，istio在进行流量捕获的时候，有一条是1337的流量转发到envoy，就是这里实现，镜像中需要add user 1337
+      runAsUser: 1337
+      runAsNonRoot: true  # 不以root 运行
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    ports:
+      - containerPort: 80
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: privileged
+  annotations:
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
+spec:
+  privileged: true
+  allowPrivilegeEscalation: true
+  allowedCapabilities:
+    - '*'
+  volumes:
+    - '*'
+  hostNetwork: true
+  hostPorts:
+    - min: 0
+      max: 65535
+  hostIPC: true
+  hostPID: true
+  runAsUser:
+    rule: 'RunAsAny'
+  seLinux:
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'RunAsAny'
+  fsGroup:
+    rule: 'RunAsAny'
+---
+# 使用role来进行使用psp
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: privileged-psp
+rules:
+  - apiGroups:
+      - policy
+    resourceNames:
+      - privileged   # 使用的psp名
+    resources:
+      - podsecuritypolicies # 资源类型
+    verbs:
+      - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-system-psp
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: privileged-psp # 绑定的role
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:nodes
+    namespace: kube-system
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:serviceaccounts:kube-system
