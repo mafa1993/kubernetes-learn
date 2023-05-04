@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-np
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      role: db  # 隔离default空间下的role=db的
+  policyTypes:
+    - "Ingress"
+    - "Egress"
+  ingress: 
+    - from:  # 下面数组是且的关系
+        - ipBlock:
+            cidr: 172.16.0.1/16  # 来自这个ip段的允许访问
+            except:
+              - "127.16.0.0.0/24" # 除去这个小段
+        - namespaceSelector:  # 来源为project=test的ns 也可以访问
+            matchLabels:
+              project: test
+        - podSelector:  # 来源于role=frontend的也可访问 
+            matchLabels:
+              role: frontend
+          ports:  # 允许tcp的6379端口
+            - protocol: TCP
+              port: 6379
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/24
+          ports:
+            - protocol: TCP
+              port: 5978 
