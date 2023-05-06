@@ -9,4 +9,4 @@ spec:
       istio: ingressgateway
   jwtRules:
     - issuer: "testing@secure.istio.io"
-      jwksUri: "https://xxx/xx"  # 用来解密jwt的地址
+      jwksUri: "https://xxx/xx"  # 同时需要去请求jwkuri获取jwk内容
