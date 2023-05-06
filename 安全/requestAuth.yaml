@@ -1,0 +1,12 @@
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentiation
+metadata:
+  name: xx
+  namespace: foo
+spec: 
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  jwtRules:
+    - issuer: "testing@secure.istio.io"
+      jwksUri: "https://xxx/xx"  # 用来解密jwt的地址

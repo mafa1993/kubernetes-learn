@@ -19,7 +19,7 @@ spec:
         - namespaceSelector:  # 来源为project=test的ns 也可以访问
             matchLabels:
               project: test
-        - podSelector:  # 来源于role=frontend的也可访问 
+        - podSelector:  # 来源于role=frontend的也可访问，ns 为default的 
             matchLabels:
               role: frontend
           ports:  # 允许tcp的6379端口

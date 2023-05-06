@@ -1,0 +1,38 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: xx
+  namespace: foo
+spec: 
+  selector:
+    matchLabels:
+      app: httpbin
+      version: v1
+  action: DENY  # 全部拒绝
+  rules:  # 设置deny的规则
+    - from:
+        - source:
+           notNamespace: ["foo"] # 非foo ns的都拒绝
+--- 
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: httpbinnamespace:foo
+spec:
+  selector:
+    matchLabels:
+      app: httpbin
+      version: V1
+  action: ALLOW
+  rules:
+    - from: # 若来自 default/sleep 或 dev，则允许
+        - source:
+            principals: ["cluster.local/ns/default/sa/sleep"]  # spiffe
+        - source:  # source 之间或关系
+            namespaces: ["dev"]
+      to:
+        - operation:  # 只允许GET
+            methods: ["GET"]
+      when:
+        - key: request.auth.claimsliss
+          values: ["https://accounts.google.com"]

@@ -1,0 +1,25 @@
+# 认证策略
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: xx
+  namespace: foo
+spec: 
+  selector:
+    matchLabels:
+      app: reviews
+  mtls: 
+    mode: STRICT # 严格模式，必须使用tls
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: xxx
+  namespace: foo
+spec: 
+  selector:
+    matchLabels:
+      app: aa
+  portLevelMtls:
+    80:   # 80端口关闭tls
+      mode: DISABLE

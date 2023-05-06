@@ -1,0 +1,21 @@
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: allow-ping-in-cluster
+spec:
+  selector: all()  # 选择所有的
+  types: 
+    - Ingress
+  ingress:
+    - action: Allow  # ipv4的ping
+      protocol: ICMP
+      source:
+        selector: all()
+      icmp:
+        type: 8 # Ping request
+    - action: Allow  # ipv6的ping
+      protocol: ICMPv6
+      source:
+        selector: all()
+      icmp:
+        type: 128 # Ping request
