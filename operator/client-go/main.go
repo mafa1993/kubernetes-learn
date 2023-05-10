@@ -1,6 +1,18 @@
 package main
 
+import "fmt"
+
 func main() {
-	//RestClient()
+	fmt.Println()
+	fmt.Println("rest client ")
+	RestClient()
+	fmt.Println()
+	fmt.Println("client set  ")
 	ClientSet()
+	fmt.Println()
+	fmt.Println("dynamic ")
+	DynamicClient()
+	fmt.Println()
+	fmt.Println("disClient")
+	DisClient()
 }
