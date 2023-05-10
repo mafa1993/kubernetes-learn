@@ -15,4 +15,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("disClient")
 	DisClient()
+
+	fmt.Println("informer demo")
+	InformerDemo()
 }
