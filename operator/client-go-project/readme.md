@@ -1,0 +1,1 @@
+监听service，annotation为 ingress/http:true 的，进行ingress的自动创建、修改、删除
