@@ -62,7 +62,7 @@ func main() {
 	// controller启动
 	stopCh = make(chan struct{})
 
-	con.Run()
+	con.Run(stopCh)  // 消费
 
 	shardeFactory.Start(stopCh) // 定义的所有infromer都会Run
 	shardeFactory.WaitForCacheSync(stopCh)
