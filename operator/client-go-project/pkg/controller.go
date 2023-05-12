@@ -103,14 +103,14 @@ func (con *Controller) addQueue(obj interface{}) {
 }
 
 // 错误处理，有错进行重试
-func (c *Controller) handlerError(key string, err error) {
-	if c.queue.NumRequeues(key) <= maxRetry {
-		c.queue.AddRateLimited(key)
+func (con *Controller) handlerError(key string, err error) {
+	if con.queue.NumRequeues(key) <= maxRetry {  // 小于重试次数
+		con.queue.AddRateLimited(key) // 加入限速队列
 		return
 	}
 
 	runtime.HandleError(err)
-	c.queue.Forget(key)
+	con.queue.Forget(key)  // 清空
 }
 
 // Run 是消费者，informer处理逻辑中加入了队列，定义方法对队列数据进行消费
@@ -124,8 +124,9 @@ func (con Controller) Run(stopCh chan struct{}) {
 	<-stopCh // 用于标记程序结束
 }
 
+// 真正消费者
 func (con Controller) queueConsumer() {
-	item, shutDown := con.queue.Get()
+	item, shutDown := con.queue.Get()  // 获取数据进行处理
 	if shutDown {
 		return
 	}
@@ -158,6 +159,8 @@ func (con Controller) queueConsumer() {
 			runtime.HandleError(err2)
 		}
 	}
+
+	con.queue.Done(item) // 完成 在队列删除
 
 }
 
