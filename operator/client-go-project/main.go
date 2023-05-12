@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"client-go/project/pkg"
@@ -44,14 +43,13 @@ func main() {
 		ingressInformer networkingv1.IngressInformer
 	)
 	// 创建informer
-	shardeFactory = informers.NewSharedInformerFactoryWithOptions(clientSet, 0, informers.WithNamespace("default"))
+	//shardeFactory = informers.NewSharedInformerFactoryWithOptions(clientSet, 0, informers.WithNamespace("ingress-nginx"))
+	shardeFactory = informers.NewSharedInformerFactory(clientSet, 0)
 
 	// 创建svc的informer
 	svcInformer = shardeFactory.Core().V1().Services()
 	// 创建ingress的informer
 	ingressInformer = shardeFactory.Networking().V1().Ingresses()
-	fmt.Println(svcInformer)
-	fmt.Println(ingressInformer)
 
 	// 增加事件
 	var con pkg.Controller
@@ -62,10 +60,8 @@ func main() {
 	// controller启动
 	stopCh = make(chan struct{})
 
-	con.Run(stopCh)  // 消费
-
 	shardeFactory.Start(stopCh) // 定义的所有infromer都会Run
 	shardeFactory.WaitForCacheSync(stopCh)
-
+	con.Run(stopCh) // 消费
 	<-stopCh
 }

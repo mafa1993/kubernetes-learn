@@ -5,6 +5,7 @@ package pkg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	knetv1 "k8s.io/api/networking/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "k8s.io/client-go/informers/core/v1"
@@ -39,11 +39,12 @@ type Controller struct {
 
 const (
 	workerNum int = 5
-	maxRetry int =3
+	maxRetry  int = 3
 )
 
 // 添加svc时的处理逻辑
 func (con *Controller) svcAdd(obj interface{}) {
+//fmt.Println("svcAdd")
 	con.addQueue(obj)
 }
 
@@ -68,24 +69,28 @@ func (con *Controller) ingressDel(obj interface{}) {
 
 	// }
 	ingress, ok := obj.(*knetv1.Ingress) // 包里进行方法实现时，都是用的指针，所以这里断言指针，这里如果不为指针，下方传参传地址也可以
+//fmt.Println(1)
 	if !ok {
-		con.handlerError(ingress.Namespace + "/" + ingress.Name,errors.New("ingress 断言失败"))
+		con.handlerError(ingress.Namespace+"/"+ingress.Name, errors.New("ingress 断言失败"))
 		//runtime.HandleError(errors.New("ingress 断言失败"))
 	}
-
+//fmt.Println(2)
 	// 获取ownerReferences
 	// 在 Kubernetes 中，使用ownerReferences来表示资源之间的从属关系。 级联删除：当删除根对象时，k8s垃圾回收器会自动删除从对象。
 	svc := v13.GetControllerOf(ingress)
+//fmt.Println(3)
 	if svc == nil {
 		runtime.HandleError(errors.New("ingress 对应的svc未找到"))
 	}
-
+//fmt.Println(4)
 	if strings.ToLower(svc.Kind) != "service" {
-		con.handlerError(ingress.Namespace + "/" + ingress.Name,errors.New("ingress对应的kind不是svc"))
+		con.handlerError(ingress.Namespace+"/"+ingress.Name, errors.New("ingress对应的kind不是svc"))
 		//runtime.HandleError(errors.New("ingress对应的kind不是svc"))
 	}
+//fmt.Println(5)
 	// 获取ingress对应的svc
-	con.addQueue(ingress.Namespace + "/" + ingress.Name)
+//fmt.Println("key" + ingress.Namespace + "/" + ingress.Name)
+	con.addQueue(ingress)
 
 }
 
@@ -95,26 +100,28 @@ func (con *Controller) addQueue(obj interface{}) {
 		key string
 		err error
 	)
+//fmt.Println("add Q")
 	key, err = cache.MetaNamespaceKeyFunc(obj) // 获取key
 	if err != nil {
-		con.handlerError(key,err)
+		con.handlerError(key, err)
 	}
 	con.queue.Add(key) // 加入队列，也可以将key和obj都入队列
 }
 
 // 错误处理，有错进行重试
 func (con *Controller) handlerError(key string, err error) {
-	if con.queue.NumRequeues(key) <= maxRetry {  // 小于重试次数
+	if con.queue.NumRequeues(key) <= maxRetry { // 小于重试次数
 		con.queue.AddRateLimited(key) // 加入限速队列
 		return
 	}
 
 	runtime.HandleError(err)
-	con.queue.Forget(key)  // 清空
+	con.queue.Forget(key) // 清空
 }
 
 // Run 是消费者，informer处理逻辑中加入了队列，定义方法对队列数据进行消费
 func (con Controller) Run(stopCh chan struct{}) {
+//fmt.Println("run")
 	// 控制worker数量
 	for i := 0; i < workerNum; i++ {
 		// Until loops until stop channel is closed, running f every period.
@@ -126,34 +133,65 @@ func (con Controller) Run(stopCh chan struct{}) {
 
 // 真正消费者
 func (con Controller) queueConsumer() {
-	item, shutDown := con.queue.Get()  // 获取数据进行处理
+	item, shutDown := con.queue.Get() // 获取数据进行处理
+//fmt.Println(11)
 	if shutDown {
 		return
 	}
+//fmt.Println(12)
 	namespace, name, err := cache.SplitMetaNamespaceKey(item.(string))
+//fmt.Println("ns", namespace)
+//fmt.Println("na", name)
 	if err != nil {
 		runtime.HandleError(err)
 	}
+//fmt.Println(13)
 	// svc 新增、修改、删除
 	// 获取svc
 	svc, err := con.svcLister.Services(namespace).Get(name)
-	annotation := svc.GetAnnotations()["http/ingress"] // 获取备注
-
 	// 获取ingress
 	_, inerr := con.ingressLister.Ingresses(namespace).Get(name)
+
+	if kerr.IsNotFound(err) && kerr.IsNotFound(inerr) {
+		con.queue.Done(item) // 完成 在队列删除
+		return
+	}
+	// 没有svc，在从svc中找annotations 会报错 Observed a panic: "invalid memory address or nil pointer dereference" (runtime error: invalid memory address or nil pointer dereference)
+
+	if kerr.IsNotFound(err) {
+//fmt.Println("run3")
+		err2 := con.client.NetworkingV1().Ingresses(namespace).Delete(context.TODO(), name, v13.DeleteOptions{}) // ingress 删除
+		// 删除失败
+		if err2 != nil {
+			runtime.HandleError(err2)
+		}
+		con.queue.Done(item) // 完成 在队列删除
+		return
+	}
+	annotation := svc.GetAnnotations()["ingress/http"] // 获取备注
+//fmt.Println(14)
+
 	// 配置了true，并且没有创建ingress (包含两种情况，1是只建立了svc，还没建立ingress，2是删除ingress)
+	// fmt.Println(annotation)
+	// fmt.Println(annotation == "true")
+	// fmt.Println(inerr)
 	if annotation == "true" && kerr.IsNotFound(inerr) {
+//fmt.Println("run1")
 		ingressOptions := con.createIngressOptions(svc)
 		//创建ingress
+//fmt.Printf("%v", ingressOptions)
 		_, err2 := con.client.NetworkingV1().Ingresses(namespace).Create(context.TODO(), ingressOptions, v13.CreateOptions{})
 		// 创建失败
 		if err2 != nil {
 			runtime.HandleError(err2)
 		}
+
 	}
 
+//fmt.Println(15)
 	// 没找到svc，或者标记为false，但是有ingress，将ingress 删除
-	if kerr.IsNotFound(err) && inerr != nil || annotation == "false" && inerr != nil {
+	if kerr.IsNotFound(err) && inerr == nil || annotation == "false" && inerr == nil {
+//fmt.Println("run2")
 		err2 := con.client.NetworkingV1().Ingresses(namespace).Delete(context.TODO(), name, v13.DeleteOptions{}) // ingress 删除
 		if err2 != nil {
 			runtime.HandleError(err2)
@@ -170,6 +208,11 @@ func (con *Controller) createIngressOptions(svc *kcorev1.Service) *knetv1.Ingres
 	ingressClass := "nginx"
 	pathType := knetv1.PathTypeExact
 
+	// fmt.Println(svc.GroupVersionKind())
+	// fmt.Printf("%v", svc.GroupVersionKind())
+	// fmt.Printf("apiversion %v\n,kind %v\n,%v\n,kcorev1%v\n", svc.APIVersion, svc.GroupVersionKind(), []v13.OwnerReference{
+	// 	*v13.NewControllerRef(svc, kcorev1.SchemeGroupVersion.WithKind("Service")),
+	// }, svc)
 	ingressOpts = knetv1.Ingress{
 		// TypeMeta: v13.TypeMeta{  不需要定义typeMeta，用默认的即可
 		// 	Kind: ,
@@ -177,12 +220,13 @@ func (con *Controller) createIngressOptions(svc *kcorev1.Service) *knetv1.Ingres
 		ObjectMeta: v13.ObjectMeta{
 			Name:      svc.Name,      // 设置ingress name
 			Namespace: svc.Namespace, // ingress namespace
-			OwnerReferences: []v13.OwnerReference{  // 创建关联关系，删除ingress时，判断了svc，是从reference中找的
-				*v13.NewControllerRef(svc, schema.GroupVersionKind{
-					Group: svc.GroupVersionKind().Group,
-					Version: svc.GroupVersionKind().Version,
-					Kind: svc.Kind,
-				}),
+			OwnerReferences: []v13.OwnerReference{ // 创建关联关系，删除ingress时，判断了svc，是从reference中找的
+				*v13.NewControllerRef(svc, kcorev1.SchemeGroupVersion.WithKind("Service")),
+				// *v13.NewControllerRef(svc, schema.GroupVersionKind{
+				// 	Group:   svc.GroupVersionKind().Group,
+				// 	Version: svc.GroupVersionKind().Version,
+				// 	Kind:    svc.Kind,
+				// }),
 			},
 		},
 		Spec: knetv1.IngressSpec{
@@ -230,7 +274,6 @@ func NewController(client kubernetes.Interface, svcInformer v1.ServiceInformer, 
 	)
 	// 获得service的informer进行处理事件添加
 	svcInformerObj = svcInformer.Informer()
-
 	svcInformerObj.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    controllerObj.svcAdd,
 		UpdateFunc: controllerObj.svcEdit,
@@ -241,6 +284,6 @@ func NewController(client kubernetes.Interface, svcInformer v1.ServiceInformer, 
 	ingressInformerObj.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		DeleteFunc: controllerObj.ingressDel,
 	})
-
+//fmt.Printf("%v", controllerObj)
 	return controllerObj
 }
