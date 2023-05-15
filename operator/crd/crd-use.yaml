@@ -1,0 +1,8 @@
+apiVersion: "demos.example.com/v1"
+kind: Demo
+metadata:
+  name: crd-demo
+  finalizers: # 用来标记删除之前需要做一些操作，如果有这个属性直接执行delete命令，会打一个deletetime的标签，并且阻塞等待，一般是有个自定义控制器处理以后，删除这个属性
+  - example.com/finalizer 
+spec:
+  name: test

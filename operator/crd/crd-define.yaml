@@ -1,0 +1,50 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # 名字必需与下面的 spec 字段匹配，并且格式为 '<名称的复数形式>.<组名>'
+  name: demos.example.com
+spec:
+  # 组名称，用于 REST API: /apis/<组>/<版本>
+  group: example.com
+  names:
+    # 名称的复数形式，用于 URL：/apis/<组>/<版本>/<名称的复数形式>
+    plural: demos
+    # 名称的单数形式，作为命令行使用时和显示时的别名
+    singular: demo
+    # kind 通常是单数形式的帕斯卡编码（PascalCased）形式。你的资源清单会使用这一形式。
+    kind: Demo
+    # shortNames 允许你在命令行使用较短的字符串来匹配资源
+    shortNames:
+    - dm
+  # 可以是 Namespaced 或 Cluster, 来标记资源的生效范围
+  scope: Namespaced
+  # 列举此 CustomResourceDefinition 所支持的版本
+  versions:
+    - name: v1
+      # 每个版本都可以通过 served 标志来独立启用或禁止
+      served: true
+      # 其中一个且只有一个版本必需被标记为存储版本
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                name:  # spec下的字段定义
+                  type: string
+                  pattern: "^test" # 利用正则限定字段值
+                  default: "test1" # 默认值
+      additionalPrinterColumns:  # 用来定义kubectl get 时的额外显示字段， 默认只显示资源名字和创建时间 Name和AGE
+      - name: crd-Name
+        type: string
+        description: The name of resource
+        jsonPath: .spec.name
+      subresources:  # 子资源，包含status和scale两种类型 
+        # status 启用 status 子资源
+        status: {}
+        # scale 启用 scale 子资源
+        scale:
+          # specReplicasPath 定义定制资源中对应 scale.spec.replicas 的 JSON 路径
+          specReplicasPath: .spec.replicas
