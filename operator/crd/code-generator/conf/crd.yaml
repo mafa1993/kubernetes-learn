@@ -2,15 +2,15 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   # 名字必需与下面的 spec 字段匹配，并且格式为 '<名称的复数形式>.<组名>'
-  name: demos.crd.example.com
+  name: foos.crd.example.com
 spec:
   # 组名称，用于 REST API: /apis/<组>/<版本>
   group: crd.example.com
   names:
     # 名称的复数形式，用于 URL：/apis/<组>/<版本>/<名称的复数形式>
-    plural: demos
+    plural: foos
     # 名称的单数形式，作为命令行使用时和显示时的别名
-    singular: demo
+    singular: foo
     # kind 通常是单数形式的帕斯卡编码（PascalCased）形式。你的资源清单会使用这一形式。
     kind: Foo
     # shortNames 允许你在命令行使用较短的字符串来匹配资源
