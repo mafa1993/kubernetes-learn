@@ -37,7 +37,7 @@ spec:
                   pattern: "^test" # 利用正则限定字段值
                   default: "test1" # 默认值
                 replicas: 
-                  type: interger
+                  type: integer
       additionalPrinterColumns:  # 用来定义kubectl get 时的额外显示字段， 默认只显示资源名字和创建时间 Name和AGE
       - name: crd-Name
         type: string
