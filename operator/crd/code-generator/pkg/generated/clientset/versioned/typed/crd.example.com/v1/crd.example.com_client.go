@@ -19,8 +19,8 @@ limitations under the License.
 package v1
 
 import (
-	v1 "crd/code-generator/pkg/apis/crd.example.com/v1"
-	"crd/code-generator/pkg/generated/clientset/versioned/scheme"
+	v1 "crd/code-gen/pkg/apis/crd.example.com/v1"
+	"crd/code-gen/pkg/generated/clientset/versioned/scheme"
 	"net/http"
 
 	rest "k8s.io/client-go/rest"

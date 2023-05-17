@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	crdv1 "crd/code-generator/pkg/apis/crd.example.com/v1"
+	crdv1 "crd/code-gen/pkg/apis/crd.example.com/v1"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"

@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	crdv1 "crd/code-generator/pkg/generated/clientset/versioned/typed/crd.example.com/v1"
+	crdv1 "crd/code-gen/pkg/generated/clientset/versioned/typed/crd.example.com/v1"
 	"fmt"
 	"net/http"
 

@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
-	clientset "crd/code-generator/pkg/generated/clientset/versioned"
-	crdv1 "crd/code-generator/pkg/generated/clientset/versioned/typed/crd.example.com/v1"
-	fakecrdv1 "crd/code-generator/pkg/generated/clientset/versioned/typed/crd.example.com/v1/fake"
+	clientset "crd/code-gen/pkg/generated/clientset/versioned"
+	crdv1 "crd/code-gen/pkg/generated/clientset/versioned/typed/crd.example.com/v1"
+	fakecrdv1 "crd/code-gen/pkg/generated/clientset/versioned/typed/crd.example.com/v1/fake"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"

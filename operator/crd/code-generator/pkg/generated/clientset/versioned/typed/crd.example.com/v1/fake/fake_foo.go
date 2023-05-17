@@ -20,7 +20,7 @@ package fake
 
 import (
 	"context"
-	v1 "crd/code-generator/pkg/apis/crd.example.com/v1"
+	v1 "crd/code-gen/pkg/apis/crd.example.com/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"

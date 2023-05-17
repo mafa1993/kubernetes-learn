@@ -20,8 +20,8 @@ package v1
 
 import (
 	"context"
-	v1 "crd/code-generator/pkg/apis/crd.example.com/v1"
-	scheme "crd/code-generator/pkg/generated/clientset/versioned/scheme"
+	v1 "crd/code-gen/pkg/apis/crd.example.com/v1"
+	scheme "crd/code-gen/pkg/generated/clientset/versioned/scheme"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
