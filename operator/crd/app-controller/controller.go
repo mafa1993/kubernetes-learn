@@ -157,25 +157,26 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	logger := klog.FromContext(ctx)
 
 	// Start the informer factories to begin populating the informer caches
-	logger.Info("Starting App controller")
+	logger.Info("controller 开始执行")
 
 	// Wait for the caches to be synced before starting workers
-	logger.Info("Waiting for informer caches to sync")
+	logger.Info("等待焕春同步")
 
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.deploymentsSynced, c.appsSynced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
+	// 等待list操作获取到的对象都同步到informer本地缓存Indexer中；
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.deploymentsSynced, c.appsSynced,c.ingressSynced,c.servicesSynced); !ok {
+		return fmt.Errorf("等待缓存同步失败")
 	}
 
-	logger.Info("Starting workers", "count", workers)
+	logger.Info("启动的协程数量为", "count", workers)
 	// Launch two workers to process App resources
 	// 启动多个worker进行事件处理
 	for i := 0; i < workers; i++ {
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
 
-	logger.Info("Started workers")
+	logger.Info("已成功运行worker")
 	<-ctx.Done()
-	logger.Info("Shutting down workers")
+	logger.Info("关停所有worker")
 
 	return nil
 }
