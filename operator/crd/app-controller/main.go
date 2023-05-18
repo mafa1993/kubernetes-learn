@@ -77,7 +77,7 @@ func main() {
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(ctx.Done())
+	kubeInformerFactory.Start(ctx.Done())  // 启动informer
 	exampleInformerFactory.Start(ctx.Done())
 
 	if err = controller.Run(ctx, 2); err != nil {

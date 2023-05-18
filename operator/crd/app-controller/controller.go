@@ -23,8 +23,10 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
@@ -184,7 +186,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 // processNextWorkItem function in order to read and process a message on the
 // workqueue.
 func (c *Controller) runWorker(ctx context.Context) {
-	for c.processNextWorkItem(ctx) {
+	for c.processNextWorkItem(ctx) { // 根据c.processnexWorkitem的返回值来判断是否继续
 	}
 }
 
@@ -198,7 +200,7 @@ func (c *Controller) processNextWorkItem(ctx context.Context) bool {
 		return false
 	}
 
-	// We wrap this block in a func so we can defer c.workqueue.Done.
+	// We wrap this block in a func so we can defer c.workqueue.Done. 一个匿名函数，用于错误捕获
 	err := func(obj interface{}) error {
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if we
@@ -287,7 +289,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	deploymentReplica := app.Spec.Deployment.Replicas
 
-	if  *deploymentReplica < 1 {
+	if *deploymentReplica < 1 {
 		utilruntime.HandleError(fmt.Errorf("%s: deployment的image必须设置", key))
 		return nil
 	}
@@ -299,6 +301,19 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		deployment, err = c.kubeclientset.AppsV1().Deployments(app.Namespace).Create(context.TODO(), newDeployment(app), metav1.CreateOptions{})
 	}
 
+	svc, err := c.servicesLister.Services(app.Namespace).Get(app.Spec.Service.Name)
+	// deployment 不存在就创建
+	if errors.IsNotFound(err) {
+		svc, err = c.kubeclientset.CoreV1().Services(app.Namespace).Create(context.TODO(), newSvc(app), metav1.CreateOptions{})
+	}
+
+	in, err := c.ingressLister.Ingresses(app.Namespace).Get(app.Spec.Service.Name)
+	// deployment 不存在就创建
+	if errors.IsNotFound(err) {
+		in, err = c.kubeclientset.NetworkingV1().Ingresses(app.Namespace).Create(context.TODO(), newIngress(app), metav1.CreateOptions{})
+
+	}
+
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
@@ -306,11 +321,27 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
+	//todo 代码优化
+
 	// If the Deployment is not controlled by this App resource, we should log
 	// a warning to the event recorder and return error msg.
 	// 检查controllerRef 是否属于app，即为owenerReference指向
 	if !metav1.IsControlledBy(deployment, app) {
 		msg := fmt.Sprintf(MessageResourceExists, deployment.Name)
+		c.recorder.Event(app, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	// svc 和app的关联关系
+	if !metav1.IsControlledBy(svc, app) {
+		msg := fmt.Sprintf(MessageResourceExists, svc.Name)
+		c.recorder.Event(app, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf("%s", msg)
+	}
+
+	// in 和app的关联关系
+	if !metav1.IsControlledBy(in, app) {
+		msg := fmt.Sprintf(MessageResourceExists, in.Name)
 		c.recorder.Event(app, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf("%s", msg)
 	}
@@ -333,8 +364,6 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	c.recorder.Event(app, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
-
-
 
 // enqueueApp takes a App resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
@@ -395,31 +424,96 @@ func (c *Controller) handleObject(obj interface{}) {
 // the App resource that 'owns' it.
 func newDeployment(app *samplev1alpha1.App) *appsv1.Deployment {
 	labels := map[string]string{
-		"app":        "nginx",
-		"controller": app.Name,
+		"app-controller": app.Name,
+		"app":            "app-controller",
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      app.Spec.Deployment.Name,
+			Name:      app.Spec.Deployment.Name, // deploment 名字
 			Namespace: app.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(app, samplev1alpha1.SchemeGroupVersion.WithKind("App")),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: app.Spec.Deployment.Replicas,
-			Selector: &metav1.LabelSelector{
+			Replicas: app.Spec.Deployment.Replicas, // 副本数
+			Selector: &metav1.LabelSelector{ // 选择label
 				MatchLabels: labels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
+					Labels: labels, // 设置label
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "nginx",
-							Image: "nginx:latest",
+							Name:  app.Spec.Deployment.Name,  // 镜像名
+							Image: app.Spec.Deployment.Image, // 镜像
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// 创建svc
+func newSvc(app *samplev1alpha1.App) *corev1.Service {
+	labels := map[string]string{
+		"app-controller": app.Name,
+		"app":            "app-controller",
+	}
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      app.Spec.Service.Name, // service 名字
+			Namespace: app.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(app, samplev1alpha1.SchemeGroupVersion.WithKind("App")),
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: labels,
+			Ports: []corev1.ServicePort{
+				{
+					Port: int32(app.Spec.Service.Port),
+					TargetPort: intstr.IntOrString{
+						IntVal: int32(app.Spec.Service.TargetPort),
+					}, //int32(app.Spec.Service.TargetPort),
+				},
+			},
+		},
+	}
+}
+
+func newIngress(app *samplev1alpha1.App) *v1.Ingress {
+	pathType := &corev1.PathTypePrefix
+	return &v1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      app.Spec.Ingress.Name, //  名字
+			Namespace: app.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(app, samplev1alpha1.SchemeGroupVersion.WithKind("App")),
+			},
+		},
+		Spec: v1.IngressSpec{
+			Rules: []v1.IngressRule{
+				{
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     app.Spec.Ingress.Path,
+									PathType: pathType,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: app.Spec.Service.Name, // 后端部署的service name
+											Port: v1.ServiceBackendPort{
+												Number: int32(app.Spec.Service.Port), // 后端部署的service port
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},

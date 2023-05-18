@@ -28,42 +28,36 @@ type App struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AppSpec   `json:"spec"`
-	Status AppStatus `json:"status"`
+	Spec AppSpec `json:"spec"`
 }
 
 // region -----需要自己修改的----
 // AppSpec is the spec for a App resource
 type AppSpec struct {
-	Deployment 		DeploymentSpec `json:"deployment"`
-	Service			ServiceSpec `json:"service"`
-	Ingress			IngressSpec `json:"ingress"`
-	
+	Deployment DeploymentSpec `json:"deployment"`
+	Service    ServiceSpec    `json:"service"`
+	Ingress    IngressSpec    `json:"ingress"`
 }
+
 // DeploymentSpec 定义deployment  里面的属性
 type DeploymentSpec struct {
-	Image   string `json:"image"`  // 使用的镜像
-	Replicas       *int32 `json:"replicas"`  // 副本数
-	Name string `json:"name"`  // 名字
+	Image    string `json:"image"`    // 使用的镜像
+	Replicas *int32 `json:"replicas"` // 副本数
+	Name     string `json:"name"`     // 名字
 }
 
 type ServiceSpec struct {
-	Name string `json:"name"`  // svc 名
-	Port uint16 `json:"port"` // svc 端口，默认是cluster Ip模式
-	TargetPort uint16 `json:"targetport"`  // 后端服务的端口
+	Name       string `json:"name"`       // svc 名
+	Port       uint16 `json:"port"`       // svc 端口，默认是cluster Ip模式
+	TargetPort uint16 `json:"targetport"` // 后端服务的端口
 }
 
 type IngressSpec struct {
-	Name string `json:"name"`  // ingress 名
-	Path  string `json:"path"`   // ingress 访问的路径
-	Port uint16 `json:"port"`   // ingress 暴露的端口
+	Name string `json:"name"` // ingress 名
+	Path string `json:"path"` // ingress 访问的路径
 }
-// endregion
 
-// AppStatus is the status for a App resource
-type AppStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
-}
+// endregion
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
