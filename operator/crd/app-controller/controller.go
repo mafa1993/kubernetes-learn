@@ -76,11 +76,10 @@ type Controller struct {
 	deploymentsSynced cache.InformerSynced
 	appsLister        listers.AppLister
 	appsSynced        cache.InformerSynced
-	servicesLister    serviceslister.ServiceLister  // 获取svc用
-	servicesSynced  cache.InformerSynced
-	ingressLister  ingresslister.IngressLister   // 获取ingress用
-	ingressSynced cache.InformerSynced
-
+	servicesLister    serviceslister.ServiceLister // 获取svc用
+	servicesSynced    cache.InformerSynced
+	ingressLister     ingresslister.IngressLister // 获取ingress用
+	ingressSynced     cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -126,10 +125,10 @@ func NewController(
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
 		appsLister:        appInformer.Lister(),
 		appsSynced:        appInformer.Informer().HasSynced,
-		servicesLister: serviceInformer.Lister(),
-		servicesSynced: serviceInformer.Informer().HasSynced,
-		ingressLister: ingressInformer.Lister(),
-		ingressSynced: ingressInformer.Informer().HasSynced,
+		servicesLister:    serviceInformer.Lister(),
+		servicesSynced:    serviceInformer.Informer().HasSynced,
+		ingressLister:     ingressInformer.Lister(),
+		ingressSynced:     ingressInformer.Informer().HasSynced,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Apps"),
 		recorder:  recorder,
@@ -163,7 +162,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 	logger.Info("等待焕春同步")
 
 	// 等待list操作获取到的对象都同步到informer本地缓存Indexer中；
-	if ok := cache.WaitForCacheSync(ctx.Done(), c.deploymentsSynced, c.appsSynced,c.ingressSynced,c.servicesSynced); !ok {
+	if ok := cache.WaitForCacheSync(ctx.Done(), c.deploymentsSynced, c.appsSynced, c.ingressSynced, c.servicesSynced); !ok {
 		return fmt.Errorf("等待缓存同步失败")
 	}
 
@@ -220,20 +219,19 @@ func (c *Controller) processNextWorkItem(ctx context.Context) bool {
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
 			c.workqueue.Forget(obj)
-			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
+			utilruntime.HandleError(fmt.Errorf("获取队列中的数据错误，类型应该是string，获取到的为 %#v", obj))
 			return nil
 		}
-		// Run the syncHandler, passing it the namespace/name string of the
-		// App resource to be synced.
-		if err := c.syncHandler(ctx, key); err != nil {
+		// syncHandler是核心处理方法，在里面进行资源的创建等
+		if err := c.syncHandler(ctx, key); err != nil { // todo 设置最大重试次数
 			// Put the item back on the workqueue to handle any transient errors.
 			c.workqueue.AddRateLimited(key)
-			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
+			return fmt.Errorf("同步错误 '%s': %s, 重试", key, err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		logger.Info("Successfully synced", "resourceName", key)
+		logger.Info("执行完成", "resourceName", key)
 		return nil
 	}(obj)
 
@@ -254,7 +252,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		utilruntime.HandleError(fmt.Errorf("错误的key: %s", key))
 		return nil
 	}
 
@@ -264,25 +262,39 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		// The App resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("app '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("没找到app '%s' ", key))
 			return nil
 		}
 
 		return err
 	}
 
-	deploymentName := app.Spec.DeploymentName
+	// deployment数据验证，replicas 默认为1
+	deploymentName := app.Spec.Deployment.Name
 	if deploymentName == "" {
 		// We choose to absorb the error here as the worker would requeue the
 		// resource otherwise. Instead, the next time the resource is updated
 		// the resource will be queued again.
-		utilruntime.HandleError(fmt.Errorf("%s: deployment name must be specified", key))
+		utilruntime.HandleError(fmt.Errorf("%s: deployment的名字必须设置", key))
+		return nil
+	}
+
+	deploymentImage := app.Spec.Deployment.Image
+	if deploymentImage == "" {
+		utilruntime.HandleError(fmt.Errorf("%s: deployment的image必须设置", key))
+		return nil
+	}
+
+	deploymentReplica := app.Spec.Deployment.Replicas
+
+	if  *deploymentReplica < 1 {
+		utilruntime.HandleError(fmt.Errorf("%s: deployment的image必须设置", key))
 		return nil
 	}
 
 	// Get the deployment with the name specified in App.spec
 	deployment, err := c.deploymentsLister.Deployments(app.Namespace).Get(deploymentName)
-	// If the resource doesn't exist, we'll create it
+	// deployment 不存在就创建
 	if errors.IsNotFound(err) {
 		deployment, err = c.kubeclientset.AppsV1().Deployments(app.Namespace).Create(context.TODO(), newDeployment(app), metav1.CreateOptions{})
 	}
@@ -296,6 +308,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	// If the Deployment is not controlled by this App resource, we should log
 	// a warning to the event recorder and return error msg.
+	// 检查controllerRef 是否属于app，即为owenerReference指向
 	if !metav1.IsControlledBy(deployment, app) {
 		msg := fmt.Sprintf(MessageResourceExists, deployment.Name)
 		c.recorder.Event(app, corev1.EventTypeWarning, ErrResourceExists, msg)
@@ -305,8 +318,8 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	// If this number of the replicas on the App resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
-	if app.Spec.Replicas != nil && *app.Spec.Replicas != *deployment.Spec.Replicas {
-		logger.V(4).Info("Update deployment resource", "currentReplicas", *app.Spec.Replicas, "desiredReplicas", *deployment.Spec.Replicas)
+	if app.Spec.Deployment.Replicas != nil && *app.Spec.Deployment.Replicas != *deployment.Spec.Replicas {
+		logger.V(4).Info("更新deployment", "当前副本数", *app.Spec.Deployment.Replicas, "预期数量", *deployment.Spec.Replicas)
 		deployment, err = c.kubeclientset.AppsV1().Deployments(app.Namespace).Update(context.TODO(), newDeployment(app), metav1.UpdateOptions{})
 	}
 
@@ -317,30 +330,11 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
-	// Finally, we update the status block of the App resource to reflect the
-	// current state of the world
-	err = c.updateAppStatus(app, deployment)
-	if err != nil {
-		return err
-	}
-
 	c.recorder.Event(app, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
-func (c *Controller) updateAppStatus(app *samplev1alpha1.App, deployment *appsv1.Deployment) error {
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// You can use DeepCopy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	appCopy := app.DeepCopy()
-	appCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
-	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the App resource.
-	// UpdateStatus will not allow changes to the Spec of the resource,
-	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.sampleclientset.AppcontrollerV1alpha1().Apps(app.Namespace).UpdateStatus(context.TODO(), appCopy, metav1.UpdateOptions{})
-	return err
-}
+
 
 // enqueueApp takes a App resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
@@ -406,14 +400,14 @@ func newDeployment(app *samplev1alpha1.App) *appsv1.Deployment {
 	}
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      app.Spec.DeploymentName,
+			Name:      app.Spec.Deployment.Name,
 			Namespace: app.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(app, samplev1alpha1.SchemeGroupVersion.WithKind("App")),
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: app.Spec.Replicas,
+			Replicas: app.Spec.Deployment.Replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
