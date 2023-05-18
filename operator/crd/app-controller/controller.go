@@ -486,7 +486,8 @@ func newSvc(app *samplev1alpha1.App) *corev1.Service {
 }
 
 func newIngress(app *samplev1alpha1.App) *v1.Ingress {
-	pathType := &corev1.PathTypePrefix
+	pathType := v1.PathTypePrefix
+	ingressClass := "nginx"
 	return &v1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      app.Spec.Ingress.Name, //  名字
@@ -496,6 +497,7 @@ func newIngress(app *samplev1alpha1.App) *v1.Ingress {
 			},
 		},
 		Spec: v1.IngressSpec{
+			IngressClassName: &ingressClass,
 			Rules: []v1.IngressRule{
 				{
 					IngressRuleValue: v1.IngressRuleValue{
@@ -503,7 +505,7 @@ func newIngress(app *samplev1alpha1.App) *v1.Ingress {
 							Paths: []v1.HTTPIngressPath{
 								{
 									Path:     app.Spec.Ingress.Path,
-									PathType: pathType,
+									PathType: &pathType,
 									Backend: v1.IngressBackend{
 										Service: &v1.IngressServiceBackend{
 											Name: app.Spec.Service.Name, // 后端部署的service name

@@ -1,0 +1,18 @@
+apiVersion: appcontroller.k8s.io/v1alpha1
+kind: App 
+metadata:
+  name: crd-demo
+spec: 
+  deployment:
+    name: dep-app
+    replicas: 1
+    image: nginx
+  service: 
+    name: svc-app
+    port: 80
+    targetport: 80
+  ingress: 
+    name: in-app
+    path: /
+
+  
