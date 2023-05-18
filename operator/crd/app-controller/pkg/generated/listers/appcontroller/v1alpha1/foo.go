@@ -26,69 +26,69 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// FooLister helps list Foos.
+// AppLister helps list Apps.
 // All objects returned here must be treated as read-only.
-type FooLister interface {
-	// List lists all Foos in the indexer.
+type AppLister interface {
+	// List lists all Apps in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
-	// Foos returns an object that can list and get Foos.
-	Foos(namespace string) FooNamespaceLister
-	FooListerExpansion
+	List(selector labels.Selector) (ret []*v1alpha1.App, err error)
+	// Apps returns an object that can list and get Apps.
+	Apps(namespace string) AppNamespaceLister
+	AppListerExpansion
 }
 
-// fooLister implements the FooLister interface.
+// fooLister implements the AppLister interface.
 type fooLister struct {
 	indexer cache.Indexer
 }
 
-// NewFooLister returns a new FooLister.
-func NewFooLister(indexer cache.Indexer) FooLister {
+// NewAppLister returns a new AppLister.
+func NewAppLister(indexer cache.Indexer) AppLister {
 	return &fooLister{indexer: indexer}
 }
 
-// List lists all Foos in the indexer.
-func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err error) {
+// List lists all Apps in the indexer.
+func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.App, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Foo))
+		ret = append(ret, m.(*v1alpha1.App))
 	})
 	return ret, err
 }
 
-// Foos returns an object that can list and get Foos.
-func (s *fooLister) Foos(namespace string) FooNamespaceLister {
+// Apps returns an object that can list and get Apps.
+func (s *fooLister) Apps(namespace string) AppNamespaceLister {
 	return fooNamespaceLister{indexer: s.indexer, namespace: namespace}
 }
 
-// FooNamespaceLister helps list and get Foos.
+// AppNamespaceLister helps list and get Apps.
 // All objects returned here must be treated as read-only.
-type FooNamespaceLister interface {
-	// List lists all Foos in the indexer for a given namespace.
+type AppNamespaceLister interface {
+	// List lists all Apps in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
-	// Get retrieves the Foo from the indexer for a given namespace and name.
+	List(selector labels.Selector) (ret []*v1alpha1.App, err error)
+	// Get retrieves the App from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Foo, error)
-	FooNamespaceListerExpansion
+	Get(name string) (*v1alpha1.App, error)
+	AppNamespaceListerExpansion
 }
 
-// fooNamespaceLister implements the FooNamespaceLister
+// fooNamespaceLister implements the AppNamespaceLister
 // interface.
 type fooNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
 }
 
-// List lists all Foos in the indexer for a given namespace.
-func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err error) {
+// List lists all Apps in the indexer for a given namespace.
+func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.App, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Foo))
+		ret = append(ret, m.(*v1alpha1.App))
 	})
 	return ret, err
 }
 
-// Get retrieves the Foo from the indexer for a given namespace and name.
-func (s fooNamespaceLister) Get(name string) (*v1alpha1.Foo, error) {
+// Get retrieves the App from the indexer for a given namespace and name.
+func (s fooNamespaceLister) Get(name string) (*v1alpha1.App, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
@@ -96,5 +96,5 @@ func (s fooNamespaceLister) Get(name string) (*v1alpha1.Foo, error) {
 	if !exists {
 		return nil, errors.NewNotFound(v1alpha1.Resource("foo"), name)
 	}
-	return obj.(*v1alpha1.Foo), nil
+	return obj.(*v1alpha1.App), nil
 }

@@ -49,19 +49,19 @@ func main() {
 
 	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
-		logger.Error(err, "Error building kubeconfig")
+		logger.Error(err, "创建kubeconf 出错")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		logger.Error(err, "Error building kubernetes clientset")
+		logger.Error(err, "创建clientset 出错")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
 	exampleClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		logger.Error(err, "Error building kubernetes clientset")
+		logger.Error(err, "创建自定义crd的clientset出错")
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 
@@ -70,7 +70,10 @@ func main() {
 
 	controller := NewController(ctx, kubeClient, exampleClient,
 		kubeInformerFactory.Apps().V1().Deployments(),
-		exampleInformerFactory.appcontroller().V1alpha1().Foos())
+		exampleInformerFactory.Appcontroller().V1alpha1().Apps(),
+		kubeInformerFactory.Core().V1().Services(),
+		kubeInformerFactory.Networking().V1().Ingresses(),
+	)
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.

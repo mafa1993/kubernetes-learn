@@ -32,11 +32,11 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// FooInformer provides access to a shared informer and lister for
-// Foos.
-type FooInformer interface {
+// AppInformer provides access to a shared informer and lister for
+// Apps.
+type AppInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.FooLister
+	Lister() v1alpha1.AppLister
 }
 
 type fooInformer struct {
@@ -45,46 +45,46 @@ type fooInformer struct {
 	namespace        string
 }
 
-// NewFooInformer constructs a new informer for Foo type.
+// NewAppInformer constructs a new informer for App type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewAppInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredAppInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredFooInformer constructs a new informer for Foo type.
+// NewFilteredAppInformer constructs a new informer for App type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredAppInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppcontrollerV1alpha1().Foos(namespace).List(context.TODO(), options)
+				return client.AppcontrollerV1alpha1().Apps(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppcontrollerV1alpha1().Foos(namespace).Watch(context.TODO(), options)
+				return client.AppcontrollerV1alpha1().Apps(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&appcontrollerv1alpha1.Foo{},
+		&appcontrollerv1alpha1.App{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
 func (f *fooInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredAppInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *fooInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&appcontrollerv1alpha1.Foo{}, f.defaultInformer)
+	return f.factory.InformerFor(&appcontrollerv1alpha1.App{}, f.defaultInformer)
 }
 
-func (f *fooInformer) Lister() v1alpha1.FooLister {
-	return v1alpha1.NewFooLister(f.Informer().GetIndexer())
+func (f *fooInformer) Lister() v1alpha1.AppLister {
+	return v1alpha1.NewAppLister(f.Informer().GetIndexer())
 }

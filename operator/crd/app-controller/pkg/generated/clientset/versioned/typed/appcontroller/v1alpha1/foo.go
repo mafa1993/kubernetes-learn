@@ -30,34 +30,34 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-// FoosGetter has a method to return a FooInterface.
+// AppsGetter has a method to return a AppInterface.
 // A group's client should implement this interface.
-type FoosGetter interface {
-	Foos(namespace string) FooInterface
+type AppsGetter interface {
+	Apps(namespace string) AppInterface
 }
 
-// FooInterface has methods to work with Foo resources.
-type FooInterface interface {
-	Create(ctx context.Context, foo *v1alpha1.Foo, opts v1.CreateOptions) (*v1alpha1.Foo, error)
-	Update(ctx context.Context, foo *v1alpha1.Foo, opts v1.UpdateOptions) (*v1alpha1.Foo, error)
-	UpdateStatus(ctx context.Context, foo *v1alpha1.Foo, opts v1.UpdateOptions) (*v1alpha1.Foo, error)
+// AppInterface has methods to work with App resources.
+type AppInterface interface {
+	Create(ctx context.Context, foo *v1alpha1.App, opts v1.CreateOptions) (*v1alpha1.App, error)
+	Update(ctx context.Context, foo *v1alpha1.App, opts v1.UpdateOptions) (*v1alpha1.App, error)
+	UpdateStatus(ctx context.Context, foo *v1alpha1.App, opts v1.UpdateOptions) (*v1alpha1.App, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.Foo, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.FooList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.App, error)
+	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.AppList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Foo, err error)
-	FooExpansion
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.App, err error)
+	AppExpansion
 }
 
-// foos implements FooInterface
+// foos implements AppInterface
 type foos struct {
 	client rest.Interface
 	ns     string
 }
 
-// newFoos returns a Foos
-func newFoos(c *AppcontrollerV1alpha1Client, namespace string) *foos {
+// newApps returns a Apps
+func newApps(c *AppcontrollerV1alpha1Client, namespace string) *foos {
 	return &foos{
 		client: c.RESTClient(),
 		ns:     namespace,
@@ -65,8 +65,8 @@ func newFoos(c *AppcontrollerV1alpha1Client, namespace string) *foos {
 }
 
 // Get takes name of the foo, and returns the corresponding foo object, and an error if there is any.
-func (c *foos) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Foo, err error) {
-	result = &v1alpha1.Foo{}
+func (c *foos) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.App, err error) {
+	result = &v1alpha1.App{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("foos").
@@ -77,13 +77,13 @@ func (c *foos) Get(ctx context.Context, name string, options v1.GetOptions) (res
 	return
 }
 
-// List takes label and field selectors, and returns the list of Foos that match those selectors.
-func (c *foos) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
+// List takes label and field selectors, and returns the list of Apps that match those selectors.
+func (c *foos) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.AppList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1alpha1.FooList{}
+	result = &v1alpha1.AppList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("foos").
@@ -110,8 +110,8 @@ func (c *foos) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface,
 }
 
 // Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.
-func (c *foos) Create(ctx context.Context, foo *v1alpha1.Foo, opts v1.CreateOptions) (result *v1alpha1.Foo, err error) {
-	result = &v1alpha1.Foo{}
+func (c *foos) Create(ctx context.Context, foo *v1alpha1.App, opts v1.CreateOptions) (result *v1alpha1.App, err error) {
+	result = &v1alpha1.App{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("foos").
@@ -123,8 +123,8 @@ func (c *foos) Create(ctx context.Context, foo *v1alpha1.Foo, opts v1.CreateOpti
 }
 
 // Update takes the representation of a foo and updates it. Returns the server's representation of the foo, and an error, if there is any.
-func (c *foos) Update(ctx context.Context, foo *v1alpha1.Foo, opts v1.UpdateOptions) (result *v1alpha1.Foo, err error) {
-	result = &v1alpha1.Foo{}
+func (c *foos) Update(ctx context.Context, foo *v1alpha1.App, opts v1.UpdateOptions) (result *v1alpha1.App, err error) {
+	result = &v1alpha1.App{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("foos").
@@ -138,8 +138,8 @@ func (c *foos) Update(ctx context.Context, foo *v1alpha1.Foo, opts v1.UpdateOpti
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *foos) UpdateStatus(ctx context.Context, foo *v1alpha1.Foo, opts v1.UpdateOptions) (result *v1alpha1.Foo, err error) {
-	result = &v1alpha1.Foo{}
+func (c *foos) UpdateStatus(ctx context.Context, foo *v1alpha1.App, opts v1.UpdateOptions) (result *v1alpha1.App, err error) {
+	result = &v1alpha1.App{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("foos").
@@ -180,8 +180,8 @@ func (c *foos) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, list
 }
 
 // Patch applies the patch and returns the patched foo.
-func (c *foos) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Foo, err error) {
-	result = &v1alpha1.Foo{}
+func (c *foos) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.App, err error) {
+	result = &v1alpha1.App{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("foos").

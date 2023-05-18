@@ -28,7 +28,7 @@ import (
 
 type AppcontrollerV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	FoosGetter
+	AppsGetter
 }
 
 // AppcontrollerV1alpha1Client is used to interact with features provided by the appcontroller.k8s.io group.
@@ -36,8 +36,8 @@ type AppcontrollerV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *AppcontrollerV1alpha1Client) Foos(namespace string) FooInterface {
-	return newFoos(c, namespace)
+func (c *AppcontrollerV1alpha1Client) Apps(namespace string) AppInterface {
+	return newApps(c, namespace)
 }
 
 // NewForConfig creates a new AppcontrollerV1alpha1Client for the given config.

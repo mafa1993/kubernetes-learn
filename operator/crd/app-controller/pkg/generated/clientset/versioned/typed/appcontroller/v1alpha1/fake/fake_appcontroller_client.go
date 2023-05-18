@@ -29,8 +29,8 @@ type FakeAppcontrollerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeAppcontrollerV1alpha1) Foos(namespace string) v1alpha1.FooInterface {
-	return &FakeFoos{c, namespace}
+func (c *FakeAppcontrollerV1alpha1) Apps(namespace string) v1alpha1.AppInterface {
+	return &FakeApps{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

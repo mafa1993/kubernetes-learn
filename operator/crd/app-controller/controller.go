@@ -28,10 +28,14 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
+	servicesinformers "k8s.io/client-go/informers/core/v1"
+	ingressinformers "k8s.io/client-go/informers/networking/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	serviceslister "k8s.io/client-go/listers/core/v1"
+	ingresslister "k8s.io/client-go/listers/networking/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -48,17 +52,17 @@ const controllerAgentName = "sample-controller"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a App is synced
-	SuccessSynced = "Synced"
+	SuccessSynced = "同步成功"
 	// ErrResourceExists is used as part of the Event 'reason' when a App fails
 	// to sync due to a Deployment of the same name already existing.
-	ErrResourceExists = "ErrResourceExists"
+	ErrResourceExists = "错误：资源已存在"
 
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by App"
+	MessageResourceExists = "资源 %q 已存在，不是app创建的"
 	// MessageResourceSynced is the message used for an Event fired when a App
 	// is synced successfully
-	MessageResourceSynced = "App synced successfully"
+	MessageResourceSynced = "app同步成功"
 )
 
 // Controller is the controller implementation for App resources
@@ -72,6 +76,11 @@ type Controller struct {
 	deploymentsSynced cache.InformerSynced
 	appsLister        listers.AppLister
 	appsSynced        cache.InformerSynced
+	servicesLister    serviceslister.ServiceLister  // 获取svc用
+	servicesSynced  cache.InformerSynced
+	ingressLister  ingresslister.IngressLister   // 获取ingress用
+	ingressSynced cache.InformerSynced
+
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -90,18 +99,24 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
-	appInformer informers.AppInformer) *Controller {
+	appInformer informers.AppInformer,
+	serviceInformer servicesinformers.ServiceInformer,
+	ingressInformer ingressinformers.IngressInformer) *Controller {
 	logger := klog.FromContext(ctx)
 
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
-	// logged for sample-controller types.
+	// logged for sample-controller types. 将自定义的schema添加到k8s中
 	utilruntime.Must(samplescheme.AddToScheme(scheme.Scheme))
-	logger.V(4).Info("Creating event broadcaster")
+	logger.V(4).Info("创建事件广播")
 
+	// 用于事件管理 https://blog.csdn.net/cbmljs/article/details/102697995  详解
 	eventBroadcaster := record.NewBroadcaster()
+	// 记录事件到本地
 	eventBroadcaster.StartStructuredLogging(0)
+	// 上报 events 到 apiserver
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+	// 初始化 EventRecorder
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
@@ -111,38 +126,22 @@ func NewController(
 		deploymentsSynced: deploymentInformer.Informer().HasSynced,
 		appsLister:        appInformer.Lister(),
 		appsSynced:        appInformer.Informer().HasSynced,
+		servicesLister: serviceInformer.Lister(),
+		servicesSynced: serviceInformer.Informer().HasSynced,
+		ingressLister: ingressInformer.Lister(),
+		ingressSynced: ingressInformer.Informer().HasSynced,
 
 		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Apps"),
 		recorder:  recorder,
 	}
 
-	logger.Info("Setting up event handlers")
-	// Set up an event handler for when App resources change
+	logger.Info("设置自定义资源事件的 句柄 kubectl get event 查看")
+	// Set up an event handler for when App resources change  创建事件处理回调
 	appInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueApp,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueApp(new)
 		},
-	})
-	// Set up an event handler for when Deployment resources change. This
-	// handler will lookup the owner of the given Deployment, and if it is
-	// owned by a App resource then the handler will enqueue that App resource for
-	// processing. This way, we don't need to implement custom logic for
-	// handling Deployment resources. More info on this pattern:
-	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
-		UpdateFunc: func(old, new interface{}) {
-			newDepl := new.(*appsv1.Deployment)
-			oldDepl := old.(*appsv1.Deployment)
-			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
-				// Periodic resync will send update events for all known Deployments.
-				// Two different versions of the same Deployment will always have different RVs.
-				return
-			}
-			controller.handleObject(new)
-		},
-		DeleteFunc: controller.handleObject,
 	})
 
 	return controller
@@ -151,7 +150,7 @@ func NewController(
 // Run will set up the event handlers for types we are interested in, as well
 // as syncing informer caches and starting workers. It will block until stopCh
 // is closed, at which point it will shutdown the workqueue and wait for
-// workers to finish processing their current work items.
+// workers to finish processing their current work items. 第二个参数为处理协程的数量控制
 func (c *Controller) Run(ctx context.Context, workers int) error {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
@@ -169,6 +168,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 
 	logger.Info("Starting workers", "count", workers)
 	// Launch two workers to process App resources
+	// 启动多个worker进行事件处理
 	for i := 0; i < workers; i++ {
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
