@@ -17,4 +17,7 @@ resources:
   kind: App
   path: kubebuilder/api/v1
   version: v1
+  webhooks:
+    conversion: true
+    webhookVersion: v1
 version: "3"
