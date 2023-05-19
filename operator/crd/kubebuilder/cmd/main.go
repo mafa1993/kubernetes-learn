@@ -92,7 +92,7 @@ func main() {
 	if err = (&controller.AppReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr); err != nil {  // 调用controller的路基
 		setupLog.Error(err, "unable to create controller", "controller", "App")
 		os.Exit(1)
 	}
