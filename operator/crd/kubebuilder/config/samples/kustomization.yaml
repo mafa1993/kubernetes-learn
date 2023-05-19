@@ -1,4 +1,4 @@
 ## Append samples of your project ##
 resources:
-- crd.example.com_v1_app.yaml
+- crd_v1_app.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

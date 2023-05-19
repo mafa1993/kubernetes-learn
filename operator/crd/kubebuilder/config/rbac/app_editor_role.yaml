@@ -12,7 +12,7 @@ metadata:
   name: app-editor-role
 rules:
 - apiGroups:
-  - crd.example.com.crd.example.com
+  - crd.example.com
   resources:
   - apps
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - crd.example.com.crd.example.com
+  - crd.example.com
   resources:
   - apps/status
   verbs:
