@@ -96,7 +96,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "App")
 		os.Exit(1)
 	}
-	// webhook创建到manager
 	if err = (&crdv1.App{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "App")
 		os.Exit(1)
