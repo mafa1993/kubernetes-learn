@@ -128,7 +128,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// 没有找到svc，则建立
-	if errors.IsNotFound(err) {
+	if errors.IsNotFound(err) && appt.Spec.EnableService {
 		if erro := controllerutil.SetControllerReference(&appt, svc, r.Scheme); erro != nil {
 			// 无关联报错
 			return ctrl.Result{Requeue: false}, erro
@@ -166,7 +166,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// 没有找到ingress，则建立
-	if errors.IsNotFound(err) {
+	if errors.IsNotFound(err) && appt.Spec.EnableIngress {
 		if err := controllerutil.SetControllerReference(&appt, ingress, r.Scheme); err != nil {
 			// 无关联报错
 			return ctrl.Result{}, err
