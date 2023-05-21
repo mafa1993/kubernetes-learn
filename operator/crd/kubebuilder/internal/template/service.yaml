@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{.ObjectMeta.Name}}
-  namespace: {{.ObjectMeta.Namespace}}
+  Namespace: {{.ObjectMeta.Namespace}}
 spec:
   selector:
     app: {{.ObjectMeta.Name}}

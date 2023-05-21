@@ -24,12 +24,12 @@ import (
 	"path"
 
 	"github.com/go-logr/logr"
-	"gopkg.in/yaml.v3"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -48,6 +48,7 @@ const (
 	tmpDir    string = "internal/template/" // 定义模板文件的路径
 	tmpSuffix string = ".yaml"              // 设置模板文件的后缀，防止乱用
 )
+
 var (
 	logger logr.Logger
 )
@@ -55,6 +56,9 @@ var (
 //+kubebuilder:rbac:groups=crd.example.com,resources=apps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=crd.example.com,resources=apps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=crd.example.com,resources=apps/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -82,22 +86,20 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	deployment = &appv1.Deployment{}
 	err = r.Get(ctx, req.NamespacedName, deployment)
 
-	// 验证获取的dep是不是和app关联的
-	// SetControllerReference里面验证了deployment的ref是不是appt，如果没有就设置上，如果不是就返回err
-	if err := controllerutil.SetControllerReference(&appt, deployment, r.Scheme); err != nil {
-		// 无关联报错
-		return ctrl.Result{}, err
-	}
-
-	err1 := parseTemp("deployment", appt, deployment) // 对模板解析
-	if err1 != nil {
-		logger.Error(err1, "deployment解析出错")
-		return ctrl.Result{}, err1
-	}
-
 	// 没有找到deployment，则建立
 	if errors.IsNotFound(err) {
+		err1 := parseTemp("deployment", appt, deployment) // 对模板解析
 
+		if err1 != nil {
+			logger.Error(err1, "deployment解析出错")
+			return ctrl.Result{}, err1
+		}
+		// 验证获取的dep是不是和app关联的
+		// SetControllerReference里面验证了deployment的ref是不是appt，如果没有就设置上，如果不是就返回err
+		if err_o := controllerutil.SetControllerReference(&appt, deployment, r.Scheme); err_o != nil {
+			// 无关联报错
+			return ctrl.Result{}, err_o
+		}
 		err = r.Create(ctx, deployment) // 创建
 		if err != nil {
 			logger.Error(err, "创建dep出错")
@@ -111,7 +113,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		if err != nil {
 			logger.Error(err, "更新dep出错")
 			return ctrl.Result{}, err // 重试
-		}
+		}	
 	}
 
 	// service 和ingress建立过程和deployment一致，可以抽成方法，这里暂不简化
@@ -119,12 +121,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	svc = &corev1.Service{}
 	err = r.Get(ctx, req.NamespacedName, svc)
 
-	if err := controllerutil.SetControllerReference(&appt, svc, r.Scheme); err != nil {
-		// 无关联报错
-		return ctrl.Result{}, err
-	}
-
-	err1 = parseTemp("service", appt, svc) // 对模板解析
+	err1 := parseTemp("service", appt, svc) // 对模板解析
 	if err1 != nil {
 		logger.Error(err1, "svc解析出错")
 		return ctrl.Result{}, err1
@@ -132,7 +129,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// 没有找到svc，则建立
 	if errors.IsNotFound(err) {
-
+		if erro := controllerutil.SetControllerReference(&appt, svc, r.Scheme); erro != nil {
+			// 无关联报错
+			return ctrl.Result{Requeue: false}, erro
+		}
 		err = r.Create(ctx, svc) // 创建
 		if err != nil {
 			logger.Error(err, "创建svc出错")
@@ -142,21 +142,22 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// 没错，说明svc创建了，更新下
 	if err == nil {
-		err = r.Update(ctx, svc) // 更新
-		if err != nil {
-			logger.Error(err, "更新svc出错")
-			return ctrl.Result{}, err // 重试
+		if !appt.Spec.EnableService {
+			if err := r.Delete(ctx, svc); err != nil {
+				return ctrl.Result{}, err
+			}
+		}else{
+			err = r.Update(ctx, svc) // 更新
+			if err != nil {
+				logger.Error(err, "更新svc出错")
+				return ctrl.Result{}, err // 重试
+			}
 		}
 	}
 
 	var ingress *netv1.Ingress
 	ingress = &netv1.Ingress{}
 	err = r.Get(ctx, req.NamespacedName, ingress)
-
-	if err := controllerutil.SetControllerReference(&appt, ingress, r.Scheme); err != nil {
-		// 无关联报错
-		return ctrl.Result{}, err
-	}
 
 	err1 = parseTemp("ingress", appt, ingress) // 对模板解析
 	if err1 != nil {
@@ -166,20 +167,29 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	// 没有找到ingress，则建立
 	if errors.IsNotFound(err) {
-
+		if err := controllerutil.SetControllerReference(&appt, ingress, r.Scheme); err != nil {
+			// 无关联报错
+			return ctrl.Result{}, err
+		}
 		err = r.Create(ctx, ingress) // 创建
 		if err != nil {
-			logger.Error(err, "创建svc出错")
+			logger.Error(err, "创建ingress出错")
 			return ctrl.Result{}, err // 重试
 		}
 	}
 
 	// 没错，说明ingress创建了，更新下
 	if err == nil {
-		err = r.Update(ctx, ingress) // 更新
-		if err != nil {
-			logger.Error(err, "更新ingress出错")
-			return ctrl.Result{}, err // 重试
+		if !appt.Spec.EnableIngress {
+			if err := r.Delete(ctx, ingress); err != nil {
+				return ctrl.Result{}, err
+			}
+		}else{
+			err = r.Update(ctx, ingress) // 更新
+			if err != nil {
+				logger.Error(err, "更新ingress出错")
+				return ctrl.Result{}, err // 重试
+			}
 		}
 	}
 
@@ -192,11 +202,11 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 // 将controller注册到manager中
 func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr). // 创建builder
-			For(&crdv1.App{}). // 将自定义对象放入builder的ForInput属性，ownsInput管理 ownref 的关联子对象 Watches 用来设置其他关注的对象  withFilter是用来设置prdicate withoptions 用来设置controller的一些配置，例如worker数量等
-			Owns(&appv1.Deployment{}).  // 增加监听对象
-			Owns(&netv1.Ingress{}).
-			Owns(&corev1.Service{}).
-			Complete(r)        // 这里面会调用Reconcile，里面对controller进行了初始化，并将controller add到了manager，controller.do 存放了Reconcile方法
+							For(&crdv1.App{}).         // 将自定义对象放入builder的ForInput属性，ownsInput管理 ownref 的关联子对象 Watches 用来设置其他关注的对象  withFilter是用来设置prdicate withoptions 用来设置controller的一些配置，例如worker数量等
+							Owns(&appv1.Deployment{}). // 增加监听对象
+							Owns(&netv1.Ingress{}).
+							Owns(&corev1.Service{}).
+							Complete(r) // 这里面会调用Reconcile，里面对controller进行了初始化，并将controller add到了manager，controller.do 存放了Reconcile方法
 }
 
 // complete中包含两个主要过程，do controller 和 do watch
@@ -211,7 +221,9 @@ func parseTemp(mode string, app crdv1.App, rlt interface{}) error {
 		logger.Error(err, "模板解析出错")
 		return err
 	}
+
 	writer := bytes.NewBuffer(make([]byte, 0)) // bytes.NewBuffer 和 bytes.Buffer啥区别？
+	writer = new(bytes.Buffer)
 	err = temp.Execute(writer, app)
 	if err != nil {
 		logger.Error(err, "模板替换出错")

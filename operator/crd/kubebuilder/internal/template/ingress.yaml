@@ -2,10 +2,10 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{.ObjectMeta.Name}}
-  namespace: {{.ObjectMeta.Namespace}}
+  Namespace: {{.ObjectMeta.Namespace}}
 spec:
   rules:
-    - host: {{.ObjectMeta.Name}}.baiding.tech
+    - host: {{.ObjectMeta.Name}}.example.com
       http:
         paths:
           - path: /
@@ -15,4 +15,4 @@ spec:
                 name: {{.ObjectMeta.Name}}
                 port:
                   number: 8080
-  ingressClassName: traefik
+  ingressClassName: nginx

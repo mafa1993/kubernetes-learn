@@ -8,5 +8,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kubebuilder
   name: app-sample
+  namespace: help
 spec:
   # TODO(user): Add fields here
+    image: nginx:latest
+    replicas: 3
+    enable_ingress: false #会被修改为true
+    enable_service: true #成功
